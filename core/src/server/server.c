@@ -2,10 +2,9 @@
 #include <stdio.h>
 #include <netinet/in.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 #include <pthread.h>
-#include <stdbool.h>
+#include <linked_list.h>
 
 #define NUM_CLIENTS 10
 
@@ -15,9 +14,11 @@ int addrlen;
 void *clientHandler(void *vargp){
     int * new_client = (int*)vargp;
     char buffer[1024];
-    char * hello = "OK";
+    char * real_message = buffer + 5;
+    char * cmd = (char *) calloc(1, 6);
+    char * ok = "OK";
+    struct LinkedList * users = NULL;
     while (recv(*new_client, buffer, sizeof(buffer), 0) > 0) {
-        char * cmd = (char *) calloc(1, 6);
         strncpy(cmd, buffer, 5);
         if (strcmp(cmd, "exit:") == 0) {
             puts("close");
@@ -25,10 +26,14 @@ void *clientHandler(void *vargp){
             free(cmd);
             return NULL;
         } else if (strcmp(cmd, "mess:") == 0) {
-            printf("%d: %s\n", *new_client, buffer);
-            send(*new_client, hello, strlen(hello), 0);
+            printf("%s: %s\n", list_get_by_conn(users, *new_client), real_message);
+            send(*new_client, ok, strlen(ok), 0);
+        } else if (strcmp(cmd, "auth:") == 0) {
+            list_add(&users, *new_client, real_message);
+            printf("new user -> %s\n", real_message);
+            send(*new_client, ok, strlen(ok), 0);
         }
-        free(cmd);
+        empty(buffer);
     }
 }
 
@@ -66,11 +71,7 @@ void server() {
     pthread_t thread_id;
     int server_fd = configure_server();
     while((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen))) {
-        //if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
-        //    perror("cannot accept");
-        //    exit(EXIT_FAILURE);
-        //}
         pthread_create(&thread_id, NULL, clientHandler, (void *) &new_socket);
-        //pthread_join(thread_id, NULL);
+        pthread_join(thread_id, NULL);
     }
 }

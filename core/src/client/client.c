@@ -3,6 +3,10 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <unistd.h>
+#include <core.h>
+#include <stdlib.h>
+
+static void auth(int sock, char * name);
 
 void client() {
     int sock = 0, valread;
@@ -30,12 +34,32 @@ void client() {
         return;
     }
 
-    send(sock, hello, strlen(hello), 0);
-    valread = read(sock, buffer, 1024);
-    send(sock, hello2, strlen(hello2), 0);
-    valread = read(sock, buffer, 1024);
-    send(sock, exit, strlen(exit), 0);
-    valread = read(sock, buffer, 1024);
-    printf("%s\n", buffer);
-    return;
+    char message[80] = {0};
+    char answer[10] = {0};
+    char * real_message = message + 5;
+
+    auth(sock, "mock");
+
+    while (strcmp(answer, "closed") != 0) {
+        scanf("%[^\n]%*c", real_message);
+        if (memcmp(real_message, "close", 5) == 0) {
+            send(sock, exit, strlen(exit), 0);
+            read(sock, answer, 10);
+            return;
+        }
+        memcpy(message, "mess:", 5);
+        send(sock, message, strlen(message), 0);
+        read(sock, answer, 10);
+        empty(message);
+        empty(answer);
+    }
+}
+
+static void auth(int sock, char * name){
+    char answer[10] = {0};
+    char message[80] = {0};
+    strcat(message, "auth:");
+    strcat(message, name);
+    send(sock, message, strlen(message), 0);
+    read(sock, answer, 10);
 }
