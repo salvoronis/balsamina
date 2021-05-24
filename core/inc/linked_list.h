@@ -7,4 +7,5 @@ struct LinkedList {
 };
 void list_add(struct LinkedList ** head, int fd, char * name);
 char * list_get_by_conn(struct LinkedList *head, int conn);
+void list_delete_node(struct LinkedList ** head, int conn);
 #endif //BALSAMINA_LINKED_LIST_H

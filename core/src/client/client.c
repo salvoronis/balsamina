@@ -5,16 +5,18 @@
 #include <unistd.h>
 #include <core.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 static void auth(int sock, char * name);
 
+_Noreturn static void *receive(void * args);
+int sock;
+
 void client() {
-    int sock = 0, valread;
+    sock = 0;
     struct sockaddr_in serv_addr;
-    char * hello = "mess:Oh shit I'm sorry";
-    char * hello2 = "mess:Sorry for what?";
     char * exit = "exit:";
-    char buffer[1024] = {0};
+    pthread_t thread_id;
 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         printf("Cannot create socket\n");
@@ -35,31 +37,39 @@ void client() {
     }
 
     char message[80] = {0};
-    char answer[10] = {0};
     char * real_message = message + 5;
 
     auth(sock, "mock");
 
-    while (strcmp(answer, "closed") != 0) {
+    pthread_create(&thread_id, NULL, receive, NULL);
+
+    while (strcmp(real_message, "close") != 0) {
         scanf("%[^\n]%*c", real_message);
         if (memcmp(real_message, "close", 5) == 0) {
             send(sock, exit, strlen(exit), 0);
-            read(sock, answer, 10);
             return;
         }
         memcpy(message, "mess:", 5);
         send(sock, message, strlen(message), 0);
-        read(sock, answer, 10);
         empty(message);
-        empty(answer);
     }
 }
 
 static void auth(int sock, char * name){
-    char answer[10] = {0};
     char message[80] = {0};
     strcat(message, "auth:");
     strcat(message, name);
     send(sock, message, strlen(message), 0);
-    read(sock, answer, 10);
+}
+
+static void *receive(void * args) {
+    char * answer = malloc(80 * sizeof(char));
+    char * cmd = (char *) calloc(1, 6);
+    while (recv(sock, answer, 80, 0) > 0) {
+        strncpy(cmd, answer, 5);
+        if (strcmp(cmd, "noti:") == 0) {
+            puts(answer + 5);
+        }
+        empty(answer);
+    }
 }

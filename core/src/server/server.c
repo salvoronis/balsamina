@@ -8,25 +8,47 @@
 
 #define NUM_CLIENTS 10
 
+void *notify(void *var_group);
+
 struct sockaddr_in address;
 int addrlen;
+//TODO fucking mutex when using users
+struct LinkedList * users = NULL;
+
+struct message_wrapper {
+    char * data;
+};
+
+struct message_wrapper * create_mes_wrap(char * data, int len){
+    struct message_wrapper * wrapper = malloc(sizeof(struct message_wrapper));
+    wrapper->data = malloc(len);
+    memcpy(wrapper->data, data, len);
+    return wrapper;
+}
 
 void *clientHandler(void *vargp){
     int * new_client = (int*)vargp;
-    char buffer[1024];
+    char buffer[80];
+    char ans_buf[100];
     char * real_message = buffer + 5;
     char * cmd = (char *) calloc(1, 6);
-    char * ok = "OK";
-    struct LinkedList * users = NULL;
+    char * ok = "ctrl:OK";
+    pthread_t thread;
     while (recv(*new_client, buffer, sizeof(buffer), 0) > 0) {
         strncpy(cmd, buffer, 5);
         if (strcmp(cmd, "exit:") == 0) {
             puts("close");
-            send(*new_client, "closed", strlen("closed"), 0);
+            list_delete_node(&users, *new_client);
+            sprintf(ans_buf, "noti:%s %s", list_get_by_conn(users, *new_client), "disconnected");
+            pthread_create(&thread, NULL, notify, create_mes_wrap(ans_buf, strlen(ans_buf)+1));
+            pthread_join(thread, NULL);
             free(cmd);
-            return NULL;
+            return 0;
         } else if (strcmp(cmd, "mess:") == 0) {
-            printf("%s: %s\n", list_get_by_conn(users, *new_client), real_message);
+            sprintf(ans_buf, "noti:%s: %s", list_get_by_conn(users, *new_client), real_message);
+            puts(ans_buf);
+            pthread_create(&thread, NULL, notify, create_mes_wrap(ans_buf, strlen(ans_buf)+1));
+            pthread_join(thread, NULL);
             send(*new_client, ok, strlen(ok), 0);
         } else if (strcmp(cmd, "auth:") == 0) {
             list_add(&users, *new_client, real_message);
@@ -34,7 +56,20 @@ void *clientHandler(void *vargp){
             send(*new_client, ok, strlen(ok), 0);
         }
         empty(buffer);
+        empty(ans_buf);
     }
+    return (void*)-1;
+}
+
+void *notify(void *var_group) {
+    struct LinkedList * tmp = users;
+    struct message_wrapper * wrapper = (struct message_wrapper *) var_group;
+    //TODO fix broken pipe
+    while (tmp != NULL) {
+        send(tmp->connection_fd, wrapper->data, strlen(wrapper->data)+1, 0);
+        tmp = tmp->next;
+    }
+    return NULL;
 }
 
 int configure_server(){
@@ -72,6 +107,6 @@ void server() {
     int server_fd = configure_server();
     while((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen))) {
         pthread_create(&thread_id, NULL, clientHandler, (void *) &new_socket);
-        pthread_join(thread_id, NULL);
+        //pthread_join(thread_id, NULL);
     }
 }

@@ -20,3 +20,17 @@ char * list_get_by_conn(struct LinkedList *head, int conn){
     }
     return NULL;
 }
+
+void list_delete_node(struct LinkedList ** head, int conn){
+    struct LinkedList * tmp = *head;
+    while (tmp->next != NULL){
+        if (tmp->next->connection_fd == conn){
+            struct LinkedList * next = tmp->next->next;
+            free(tmp->next);
+            tmp->next = next;
+            return;
+        }
+        tmp = tmp->next;
+    }
+    return;
+}
