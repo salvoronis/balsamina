@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <core.h>
+#include <ui.h>
 
 void disassembly_args(int, char*[]);
 
@@ -24,6 +25,7 @@ void disassembly_args(int argc, char * argv[]) {
                 break;
             case 'c':
                 client();
+                initialize_ui();
                 break;
             default:
                 break;

@@ -2,20 +2,17 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <string.h>
-#include <unistd.h>
 #include <core.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <ui.h>
 
-static void auth(int sock, char * name);
-
-_Noreturn static void *receive(void * args);
+static void *receive(void * args);
 int sock;
 
 void client() {
     sock = 0;
     struct sockaddr_in serv_addr;
-    char * exit = "exit:";
     pthread_t thread_id;
 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -36,26 +33,22 @@ void client() {
         return;
     }
 
-    char message[80] = {0};
-    char * real_message = message + 5;
-
-    auth(sock, "mock");
-
     pthread_create(&thread_id, NULL, receive, NULL);
-
-    while (strcmp(real_message, "close") != 0) {
-        scanf("%[^\n]%*c", real_message);
-        if (memcmp(real_message, "close", 5) == 0) {
-            send(sock, exit, strlen(exit), 0);
-            return;
-        }
-        memcpy(message, "mess:", 5);
-        send(sock, message, strlen(message), 0);
-        empty(message);
-    }
 }
 
-static void auth(int sock, char * name){
+void send_message(char * message){
+    char * exit = "exit:";
+    if (memcmp(message, "close", 5) == 0) {
+        send(sock, exit, strlen(exit), 0);
+        return;
+    }
+    char msg[85] = {0};
+    strcat(msg, "mess:");
+    strcat(msg, message);
+    send(sock, msg, strlen(msg), 0);
+}
+
+void auth(char * name){
     char message[80] = {0};
     strcat(message, "auth:");
     strcat(message, name);
@@ -68,7 +61,7 @@ static void *receive(void * args) {
     while (recv(sock, answer, 80, 0) > 0) {
         strncpy(cmd, answer, 5);
         if (strcmp(cmd, "noti:") == 0) {
-            puts(answer + 5);
+            print_message(answer + 5);
         }
         empty(answer);
     }
