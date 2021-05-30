@@ -62,6 +62,8 @@ static void *receive(void * args) {
         strncpy(cmd, answer, 5);
         if (strcmp(cmd, "noti:") == 0) {
             print_message(answer + 5);
+        } else if (strcmp(cmd, "auth:") == 0) {
+            print_message(answer);
         }
         empty(answer);
     }

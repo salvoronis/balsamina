@@ -28,20 +28,21 @@ struct message_wrapper * create_mes_wrap(char * data, int len){
 }
 
 void *clientHandler(void *vargp){
-    int * new_client = (int*)vargp;
+    int new_client;
+    memcpy(&new_client, vargp, sizeof(int));
     char buffer[80];
     char ans_buf[100];
     char * real_message = buffer + MESSAGE_BODY;
     char * cmd = (char *) calloc(1, 6);
     char * ok = "ctrl:OK";
     pthread_t thread;
-    while (recv(*new_client, buffer, sizeof(buffer), 0) > 0) {
+    while (recv(new_client, buffer, sizeof(buffer), 0) > 0) {
         strncpy(cmd, buffer, 5);
         //disconnect user
         if (strcmp(cmd, "exit:") == 0) {
             puts("close");
-            list_delete_node(&users, *new_client);
-            sprintf(ans_buf, "noti:%s %s", list_get_by_conn(users, *new_client), "disconnected");
+            list_delete_node(&users, new_client);
+            sprintf(ans_buf, "noti:%s %s", list_get_by_conn(users, new_client), "disconnected");
             //notify all users about %username% disconnection
             pthread_create(&thread, NULL, notify, create_mes_wrap(ans_buf, strlen(ans_buf)+1));
             pthread_join(thread, NULL);
@@ -50,18 +51,21 @@ void *clientHandler(void *vargp){
         }
         //message from user
         else if (strcmp(cmd, "mess:") == 0) {
-            sprintf(ans_buf, "noti:%s: %s", list_get_by_conn(users, *new_client), real_message);
+            sprintf(ans_buf, "noti:%s: %s", list_get_by_conn(users, new_client), real_message);
             puts(ans_buf);
             //notify other users about message
             pthread_create(&thread, NULL, notify, create_mes_wrap(ans_buf, strlen(ans_buf)+1));
             pthread_join(thread, NULL);
-            send(*new_client, ok, strlen(ok), 0);
+            send(new_client, ok, strlen(ok), 0);
         }
         //connect user to the chat
         else if (strcmp(cmd, "auth:") == 0) {
-            list_add(&users, *new_client, real_message);
-            printf("new user -> %s\n", real_message);
-            send(*new_client, ok, strlen(ok), 0);
+            list_add(&users, new_client, real_message);
+            sprintf(ans_buf, "auth:%s: %s", list_get_by_conn(users, new_client), "joined chat");
+            puts(ans_buf);
+            pthread_create(&thread, NULL, notify, create_mes_wrap(ans_buf, strlen(ans_buf)+1));
+            pthread_join(thread, NULL);
+            send(new_client, ok, strlen(ok), 0);
         }
         empty(buffer);
         empty(ans_buf);

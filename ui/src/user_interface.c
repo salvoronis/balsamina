@@ -2,15 +2,21 @@
 #include <ui.h>
 #include <string.h>
 #include <core.h>
+#include <pthread.h>
 
-static void read_message();
+static void * read_message(void * args);
 static void message_up();
 
 int current_line;
 char messages[20][80];
+pthread_mutex_t lock_screen;
 
 void initialize_ui(){
     current_line = 0;
+    if (pthread_mutex_init(&lock_screen, NULL) != 0) {
+        puts("problem with mutex");
+        return;
+    }
     home();
     clear_screen();
     gotoxy(30, 10);
@@ -19,10 +25,12 @@ void initialize_ui(){
     scanf("%[^\n]%*c", username);
     auth(username);
     clear_screen();
-    read_message();
+    pthread_t messages_thread;
+    pthread_create(&messages_thread, NULL, read_message, NULL);
+    pthread_join(messages_thread, NULL);
 }
 
-static void read_message(){
+static void * read_message(void * args){
     char message[80];
     while (strcmp(message, "close") != 0) {
         empty(message);
@@ -38,13 +46,15 @@ static void read_message(){
 }
 
 void print_message(char * message){
-    gotoxy(1, current_line+1);
     if (current_line == 20) {
         message_up();
     }
     memcpy(&messages[current_line], message, strlen(message));
+    pthread_mutex_lock(&lock_screen);
+    gotoxy(1, current_line+1);
     printf("%s", message);
     current_line++;
+    pthread_mutex_unlock(&lock_screen);
 }
 
 static void message_up(){
