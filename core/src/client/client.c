@@ -62,11 +62,7 @@ static void *receive(void * args) {
     char * cmd = (char *) calloc(1, 6);
     while (recv(sock, answer, 80, 0) > 0) {
         strncpy(cmd, answer, 5);
-        if (strcmp(cmd, "noti:") == 0) {
-            print_message(answer + 5);
-        } else if (strcmp(cmd, "auth:") == 0) {
-            print_message(answer);
-        }
+        print_message(answer + 5);
         empty(answer);
     }
 }

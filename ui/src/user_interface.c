@@ -58,22 +58,25 @@ void initialize_ui(int client_fd){
     fd_set s_rd;
     struct timeval time;
     int retval;
-    FD_ZERO(&s_rd);
-    FD_SET(STDIN_FILENO, &s_rd);
+
     while (strcmp(message, "close") != 0) {
+        FD_ZERO(&s_rd);
+        FD_SET(STDIN_FILENO, &s_rd);
         time.tv_sec = 0;
         time.tv_usec = 0;
         retval = select(STDIN_FILENO + 1, &s_rd, NULL, NULL, &time);
+        gotoxy(1, 21);
+        printf("message: ");
         if (retval == 0) {
+
+        } else {
             empty(message);
-            gotoxy(1, 21);
-            printf("message: ");
             scanf("%[^\n]%*c", message);
             send_message(message);
             gotoxy(9, 21);
             clear_cur_line();
         }
-        usleep(100000);
+        usleep(10);
     }
     reset_keypress();
 }
