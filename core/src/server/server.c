@@ -119,6 +119,5 @@ void server() {
     int server_fd = configure_server();
     while((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen))) {
         pthread_create(&thread_id, NULL, clientHandler, (void *) &new_socket);
-        //pthread_join(thread_id, NULL);
     }
 }

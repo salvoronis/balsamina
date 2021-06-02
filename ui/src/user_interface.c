@@ -3,15 +3,41 @@
 #include <string.h>
 #include <core.h>
 #include <pthread.h>
+#include <sys/select.h>
+#include <unistd.h>
+#include <termios.h>
 
-static void * read_message(void * args);
 static void message_up();
 
 int current_line;
 char messages[20][80];
 pthread_mutex_t lock_screen;
 
-void initialize_ui(){
+static struct termios stored_settings;
+
+void set_keypress(void)
+{
+    struct termios new_settings;
+
+    tcgetattr(0,&stored_settings);
+
+    new_settings = stored_settings;
+
+    new_settings.c_lflag &= (~ICANON & ~ECHO);
+    new_settings.c_cc[VTIME] = 0;
+    new_settings.c_cc[VMIN] = 1;
+
+    tcsetattr(0,TCSANOW,&new_settings);
+    return;
+}
+
+void reset_keypress(void)
+{
+    tcsetattr(0,TCSANOW,&stored_settings);
+    return;
+}
+
+void initialize_ui(int client_fd){
     current_line = 0;
     if (pthread_mutex_init(&lock_screen, NULL) != 0) {
         puts("problem with mutex");
@@ -25,24 +51,31 @@ void initialize_ui(){
     scanf("%[^\n]%*c", username);
     auth(username);
     clear_screen();
-    pthread_t messages_thread;
-    pthread_create(&messages_thread, NULL, read_message, NULL);
-    pthread_join(messages_thread, NULL);
-}
 
-static void * read_message(void * args){
+    set_keypress();
+
     char message[80];
+    fd_set s_rd;
+    struct timeval time;
+    int retval;
+    FD_ZERO(&s_rd);
+    FD_SET(STDIN_FILENO, &s_rd);
     while (strcmp(message, "close") != 0) {
-        empty(message);
-        gotoxy(1, 21);
-        printf("message: ");
-        scanf("%[^\n]%*c", message);
-        send_message(message);
-        gotoxy(9, 21);
-        clear_cur_line();
+        time.tv_sec = 0;
+        time.tv_usec = 0;
+        retval = select(STDIN_FILENO + 1, &s_rd, NULL, NULL, &time);
+        if (retval == 0) {
+            empty(message);
+            gotoxy(1, 21);
+            printf("message: ");
+            scanf("%[^\n]%*c", message);
+            send_message(message);
+            gotoxy(9, 21);
+            clear_cur_line();
+        }
+        usleep(100000);
     }
-    home();
-    clear_screen();
+    reset_keypress();
 }
 
 void print_message(char * message){

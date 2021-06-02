@@ -10,14 +10,14 @@
 static void *receive(void * args);
 int sock;
 
-void client() {
+int client() {
     sock = 0;
     struct sockaddr_in serv_addr;
     pthread_t thread_id;
 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         printf("Cannot create socket\n");
-        return;
+        return -1;
     }
 
     serv_addr.sin_family = AF_INET;
@@ -25,15 +25,17 @@ void client() {
 
     if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
         printf("Invalid address/Address not supported\n");
-        return;
+        return -1;
     }
 
     if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
         printf("Connection failed\n");
-        return;
+        return -1;
     }
 
     pthread_create(&thread_id, NULL, receive, NULL);
+
+    return sock;
 }
 
 void send_message(char * message){

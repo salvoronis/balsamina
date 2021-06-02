@@ -18,14 +18,15 @@ void disassembly_args(int argc, char * argv[]) {
     };
     int32_t rez;
     int32_t longId;
+    int client_fd;
     while ((rez = getopt_long(argc, argv, shortFlags, longFlags, &longId)) != -1) {
         switch (rez) {
             case 's':
                 server();
                 break;
             case 'c':
-                client();
-                initialize_ui();
+                client_fd = client();
+                initialize_ui(client_fd);
                 break;
             default:
                 break;
