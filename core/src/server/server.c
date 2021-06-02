@@ -43,6 +43,8 @@ void *clientHandler(void *vargp){
     char * real_message = buffer + MESSAGE_BODY;
     char * cmd = (char *) calloc(1, 6);
 
+    unsigned int user_pointer = 0;
+
     pthread_t thread;
     while (recv(new_client, buffer, sizeof(buffer), 0) > 0) {
         strncpy(cmd, buffer, 5);
@@ -72,10 +74,34 @@ void *clientHandler(void *vargp){
         //connect user to the chat
         else if (strcmp(cmd, "auth:") == 0) {
             list_add(&users, new_client, real_message);
-            sprintf(ans_buf, "auth:%s: %s", list_get_by_conn(users, new_client), "joined chat");
+            sprintf(ans_buf, "auth:%s %s", list_get_by_conn(users, new_client), "joined chat");
             puts(ans_buf);
             struct history_wrapper wrapper = {history_n, new_client};
             send_history((void *)&wrapper);
+        }
+        else if (strcmp(cmd, "upto:") == 0) {
+            if (user_pointer == 0) {
+                user_pointer = history_n;
+            }
+            if (user_pointer <= 20) {
+                continue;
+            }
+            user_pointer--;
+            sprintf(ans_buf, "upto:%s", (history_buf[user_pointer - 20]) + 5);
+            send(new_client, ans_buf, strlen(ans_buf)+1, 0);
+            continue;
+        }
+        else if (strcmp(cmd, "down:") == 0) {
+            if (user_pointer == 0) {
+                user_pointer = history_n;
+            }
+            if (user_pointer >= history_n) {
+                continue;
+            }
+            sprintf(ans_buf, "down:%s", (history_buf[user_pointer]) + 5);
+            user_pointer++;
+            send(new_client, ans_buf, strlen(ans_buf)+1, 0);
+            continue;
         }
         history_buf = realloc(history_buf, (history_n + 1) * sizeof(char*));
         history_buf[history_n] = calloc(1, strlen(ans_buf) + 1);

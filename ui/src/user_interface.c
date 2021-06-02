@@ -72,6 +72,13 @@ void initialize_ui(int client_fd){
         } else {
             empty(message);
             scanf("%[^\n]%*c", message);
+            if (message[0] == '\033' && message[2] == 'A') {
+                up();
+                continue;
+            } else if (message[0] == '\033' && message[2] == 'B') {
+                down();
+                continue;
+            }
             send_message(message);
             gotoxy(9, 21);
             clear_cur_line();
@@ -102,4 +109,28 @@ static void message_up(){
     }
     gotoxy(1, current_line);
     current_line = 19;
+}
+
+void string_up(char * message){
+    clear_screen();
+    for (int i = 18; i >= 0; i--) {
+        gotoxy(1, i+2);
+        memcpy(messages[i+1], messages[i], 80);
+        printf("%s",messages[i]);
+    }
+    gotoxy(1, 1);
+    memcpy(messages[0], message, strlen(message));
+    printf("%s",messages[0]);
+}
+
+void string_down(char * message){
+    clear_screen();
+    for (int i = 1; i < 20; i++){
+        gotoxy(1, i);
+        memcpy(messages[i-1], messages[i], 80);
+        printf("%s",messages[i-1]);
+    }
+    gotoxy(1, 20);
+    memcpy(messages[19], message, strlen(message));
+    printf("%s",messages[19]);
 }

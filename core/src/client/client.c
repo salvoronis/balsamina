@@ -57,11 +57,30 @@ void auth(char * name){
     send(sock, message, strlen(message), 0);
 }
 
+void up(){
+    char message[5] = {0};
+    sprintf(message, "%s", "upto:");
+    send(sock, message, strlen(message), 0);
+}
+
+void down(){
+    char message[5] = {0};
+    sprintf(message, "%s", "down:");
+    send(sock, message, strlen(message), 0);
+}
+
 static void *receive(void * args) {
-    char * answer = malloc(80 * sizeof(char));
+    char * answer = calloc(1,80 * sizeof(char));
     char * cmd = (char *) calloc(1, 6);
     while (recv(sock, answer, 80, 0) > 0) {
         strncpy(cmd, answer, 5);
+        if (strcmp(cmd, "upto:") == 0) {
+            string_up(answer + 5);
+            continue;
+        } else if (strcmp(cmd, "down:") == 0){
+            string_down(answer + 5);
+            continue;
+        }
         print_message(answer + 5);
         empty(answer);
     }
