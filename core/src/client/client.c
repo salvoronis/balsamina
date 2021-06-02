@@ -9,11 +9,16 @@
 
 static void *receive(void * args);
 int sock;
+pthread_mutex_t output;
 
-int client() {
+int client(int port) {
     sock = 0;
     struct sockaddr_in serv_addr;
     pthread_t thread_id;
+    if (pthread_mutex_init(&output, NULL) != 0) {
+        puts("problem with mutex");
+        return -1;
+    }
 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         printf("Cannot create socket\n");
@@ -21,7 +26,7 @@ int client() {
     }
 
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(8080);
+    serv_addr.sin_port = htons(port);
 
     if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
         printf("Invalid address/Address not supported\n");
@@ -81,7 +86,9 @@ static void *receive(void * args) {
             string_down(answer + 5);
             continue;
         }
+        pthread_mutex_lock(&output);
         print_message(answer + 5);
+        pthread_mutex_unlock(&output);
         empty(answer);
     }
 }

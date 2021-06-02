@@ -18,6 +18,7 @@ int addrlen;
 struct LinkedList * users = NULL;
 char ** history_buf;
 unsigned int history_n = 0;
+pthread_mutex_t lock_history;
 
 struct message_wrapper {
     char * data;
@@ -103,10 +104,12 @@ void *clientHandler(void *vargp){
             send(new_client, ans_buf, strlen(ans_buf)+1, 0);
             continue;
         }
+        pthread_mutex_lock(&lock_history);
         history_buf = realloc(history_buf, (history_n + 1) * sizeof(char*));
         history_buf[history_n] = calloc(1, strlen(ans_buf) + 1);
         strcpy(history_buf[history_n], ans_buf);
         history_n++;
+        pthread_mutex_unlock(&lock_history);
         pthread_create(&thread, NULL, notify, create_mes_wrap(ans_buf, strlen(ans_buf)+1));
         pthread_join(thread, NULL);
         empty(buffer);
@@ -124,9 +127,11 @@ void send_history(void *var_group){
     if (history->cur_pointer > 20) {
         from = history->cur_pointer - ((history->cur_pointer/20) * 20);
     }
+    pthread_mutex_lock(&lock_history);
     for (unsigned int i = from; i < history->cur_pointer; i++){
         send(history->user, history_buf[i], strlen(history_buf[i])+1, 0);
     }
+    pthread_mutex_unlock(&lock_history);
 }
 
 void *notify(void *var_group) {
@@ -140,7 +145,7 @@ void *notify(void *var_group) {
     return NULL;
 }
 
-int configure_server(){
+int configure_server(int port){
     int server_fd;
     addrlen = sizeof(address);
     int opt = 1;
@@ -156,7 +161,7 @@ int configure_server(){
     }
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(8080);
+    address.sin_port = htons(port);
 
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
         perror("bind error");
@@ -169,10 +174,14 @@ int configure_server(){
     return server_fd;
 }
 
-void server() {
+void server(int port) {
+    if (pthread_mutex_init(&lock_history, NULL) != 0) {
+        puts("problem with mutex");
+        return;
+    }
     int new_socket;
     pthread_t thread_id;
-    int server_fd = configure_server();
+    int server_fd = configure_server(port);
     history_buf = malloc(1);
     while((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen))) {
         pthread_create(&thread_id, NULL, clientHandler, (void *) &new_socket);

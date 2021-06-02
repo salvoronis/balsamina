@@ -22,11 +22,11 @@ void disassembly_args(int argc, char * argv[]) {
     while ((rez = getopt_long(argc, argv, shortFlags, longFlags, &longId)) != -1) {
         switch (rez) {
             case 's':
-                server();
+                server(atoi(optarg));
                 break;
             case 'c':
-                client_fd = client();
-                initialize_ui(client_fd);
+                client(atoi(optarg));
+                initialize_ui();
                 break;
             default:
                 break;

@@ -37,7 +37,7 @@ void reset_keypress(void)
     return;
 }
 
-void initialize_ui(int client_fd){
+void initialize_ui(){
     current_line = 0;
     if (pthread_mutex_init(&lock_screen, NULL) != 0) {
         puts("problem with mutex");

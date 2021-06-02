@@ -5,7 +5,7 @@
 #ifndef BALSAMINA_UI_H
 #define BALSAMINA_UI_H
 
-void initialize_ui(int);
+void initialize_ui();
 void string_up(char * message);
 void string_down(char * message);
 void print_message(char * message);
