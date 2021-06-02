@@ -24,7 +24,7 @@ void set_keypress(void)
     new_settings = stored_settings;
 
     new_settings.c_lflag &= (~ICANON & ~ECHO);
-    new_settings.c_cc[VTIME] = 0;
+    new_settings.c_cc[VTIME] = 1;
     new_settings.c_cc[VMIN] = 1;
 
     tcsetattr(0,TCSANOW,&new_settings);
@@ -72,6 +72,10 @@ void initialize_ui(int client_fd){
         } else {
             empty(message);
             scanf("%[^\n]%*c", message);
+            if (strlen(message) == 0) {
+                send_message("close");
+                break;
+            }
             if (message[0] == '\033' && message[2] == 'A') {
                 up();
                 continue;
@@ -86,6 +90,7 @@ void initialize_ui(int client_fd){
         usleep(10);
     }
     reset_keypress();
+    printf("вам бан за пустую строку\n");
 }
 
 void print_message(char * message){
