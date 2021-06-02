@@ -10,14 +10,22 @@
 #define MESSAGE_BODY 5
 
 void *notify(void *var_group);
+void send_history(void *var_group);
 
 struct sockaddr_in address;
 int addrlen;
 //TODO fucking mutex when using users
 struct LinkedList * users = NULL;
+char ** history_buf;
+unsigned int history_n = 0;
 
 struct message_wrapper {
     char * data;
+};
+
+struct history_wrapper {
+    unsigned int    cur_pointer;
+    int             user;
 };
 
 struct message_wrapper * create_mes_wrap(char * data, int len){
@@ -34,6 +42,7 @@ void *clientHandler(void *vargp){
     char ans_buf[100];
     char * real_message = buffer + MESSAGE_BODY;
     char * cmd = (char *) calloc(1, 6);
+
     pthread_t thread;
     while (recv(new_client, buffer, sizeof(buffer), 0) > 0) {
         strncpy(cmd, buffer, 5);
@@ -46,6 +55,17 @@ void *clientHandler(void *vargp){
         }
         //message from user
         else if (strcmp(cmd, "mess:") == 0) {
+            if (strstr(real_message, "@")) {
+                char * tmp = calloc(1, strlen(real_message) + 1);
+                memcpy(tmp, real_message, strlen(real_message));
+                char * to = strtok(tmp, " ");
+                int to_client = connection_by_name(users, to + 1);
+                sprintf(ans_buf, "noti:%s: %s", list_get_by_conn(users, new_client), real_message);
+                send(new_client, ans_buf, strlen(ans_buf)+1, 0);
+                send(to_client, ans_buf, strlen(ans_buf)+1, 0);
+                empty(ans_buf);
+                continue;
+            }
             sprintf(ans_buf, "noti:%s: %s", list_get_by_conn(users, new_client), real_message);
             puts(ans_buf);
         }
@@ -54,7 +74,13 @@ void *clientHandler(void *vargp){
             list_add(&users, new_client, real_message);
             sprintf(ans_buf, "auth:%s: %s", list_get_by_conn(users, new_client), "joined chat");
             puts(ans_buf);
+            struct history_wrapper wrapper = {history_n, new_client};
+            send_history((void *)&wrapper);
         }
+        history_buf = realloc(history_buf, (history_n + 1) * sizeof(char*));
+        history_buf[history_n] = calloc(1, strlen(ans_buf) + 1);
+        strcpy(history_buf[history_n], ans_buf);
+        history_n++;
         pthread_create(&thread, NULL, notify, create_mes_wrap(ans_buf, strlen(ans_buf)+1));
         pthread_join(thread, NULL);
         empty(buffer);
@@ -63,9 +89,23 @@ void *clientHandler(void *vargp){
     return (void*)-1;
 }
 
+void send_history(void *var_group){
+    struct history_wrapper * history = (struct history_wrapper*) var_group;
+    unsigned int from = 0;
+    if (history->cur_pointer == 0) {
+        return;
+    }
+    if (history->cur_pointer > 20) {
+        from = history->cur_pointer - ((history->cur_pointer/20) * 20);
+    }
+    for (unsigned int i = from; i < history->cur_pointer; i++){
+        send(history->user, history_buf[i], strlen(history_buf[i])+1, 0);
+    }
+}
+
 void *notify(void *var_group) {
     struct LinkedList * tmp = users;
-    struct message_wrapper * wrapper = (struct message_wrapper *) var_group;
+    struct message_wrapper * wrapper = (struct message_wrapper*) var_group;
     //TODO fix broken pipe
     while (tmp != NULL) {
         send(tmp->connection_fd, wrapper->data, strlen(wrapper->data)+1, 0);
@@ -107,6 +147,7 @@ void server() {
     int new_socket;
     pthread_t thread_id;
     int server_fd = configure_server();
+    history_buf = malloc(1);
     while((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen))) {
         pthread_create(&thread_id, NULL, clientHandler, (void *) &new_socket);
     }

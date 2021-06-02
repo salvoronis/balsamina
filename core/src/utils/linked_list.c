@@ -21,6 +21,16 @@ char * list_get_by_conn(struct LinkedList *head, int conn){
     return NULL;
 }
 
+int connection_by_name(struct LinkedList *head, char * name){
+    while (head != NULL) {
+        if(strcmp(head->name, name) == 0){
+            return head->connection_fd;
+        }
+        head = head->next;
+    }
+    return -1;
+}
+
 void list_delete_node(struct LinkedList ** head, int conn){
     struct LinkedList * tmp = *head;
     while (tmp->next != NULL){
